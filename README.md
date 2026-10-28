@@ -121,12 +121,14 @@ can sit on top of the real map. Exporting `heatmap_cells.csv` writes:
 | File | Contents |
 |---|---|
 | `heatmap_cells_map.png` | The level seen straight down. +Z is the top of the image, +X is the right |
-| `heatmap_cells_map_bounds.csv` | One row: `min_x, max_x, min_z, max_z` (world metres the picture covers), size in pixels, pixels per metre |
+| `heatmap_cells_map_bounds.csv` | One row: `min_x, max_x, min_z, max_z` (world metres the picture covers), size in pixels, pixels per metre, and `height_image, min_y, max_y` for the heightmap |
+| `heatmap_cells_map_height.png` | 16-bit grayscale heightmap, same size and framing as the map: black is `min_y`, white is `max_y` |
 
 The picture covers every shown session's samples and events plus *Padding*, so the same map fits both CSV exports.
 *Hide Above* cuts away geometry more than that many metres above the highest floor players walked on, so roofs and
-ceilings don't hide the floor. Turn off *Save With CSV Export* to skip it, or save a map on its own from **Export**
-(optionally with the current heatmap, paths and markers drawn on). It renders the scene that is open, so open the
+ceilings don't hide the floor. Where the cut passes through something solid, such as a mountain, a tall rock or a
+wall, the picture shows that solid's top rather than its hollow inside. Turn off *Save With CSV Export* to skip it, or
+save a map on its own from **Export** (optionally with the current heatmap, paths and markers drawn on). It renders the scene that is open, so open the
 level the sessions were recorded in first.
 
 Plotting a CSV over the map with Python:
@@ -145,6 +147,39 @@ plt.show()
 
 In Excel, use the PNG as the chart's plot-area fill and set the X axis to `min_x`–`max_x` and the Y axis to
 `min_z`–`max_z`.
+
+### Heightmap
+
+With *Save Heightmap* on, every map also gets a `_height.png`. Each pixel holds the height of the highest surface
+under it: meshes and terrain below *Hide Above*, seen from the same camera as the map, so pixel (x, y) in both
+images is the same spot. Terrain trees, grass and particles are left out so the surface stays clean, and only the most
+detailed level of each LOD group is used. Pixels with nothing under them take the height of the nearest surface.
+
+Where *Hide Above* cuts through something solid, such as a mountain, a tall rock or a wall, the heightmap keeps the
+solid's real top instead of looking into it, so outdoor levels keep their full shape. It tells solids from roofs by
+their normals: above the cut, a surface facing up counts +1 and one facing down -1, and a positive total means the
+cut is inside something. A roof made of a single plane facing up, with no underside, therefore counts as solid; give
+it some thickness, or raise *Hide Above* above it.
+
+After saving, the Console reports how well the heightmap fits the places players stood (it should be well above 80%).
+
+Keep the PNG as it was exported: opening and re-saving it in an image editor can rotate it or convert it to 8-bit.
+
+To get metres back: `height = min_y + gray / 65535 * (max_y - min_y)`. For displacement in a 3D tool, use the PNG as
+the displacement or height texture on a plane that is `max_x - min_x` by `max_z - min_z` metres, with a strength of
+`max_y - min_y`. It's 16-bit, so keep it as non-colour or linear data and don't let the tool convert it to 8-bit.
+
+```python
+import numpy as np
+from PIL import Image
+
+b = pd.read_csv("heatmap_cells_map_bounds.csv").iloc[0]
+gray = np.asarray(Image.open(b.height_image), dtype=np.float64)
+heights = b.min_y + gray / 65535 * (b.max_y - b.min_y)
+```
+
+Row 0 of both images is the `max_z` edge, so a CSV point maps to pixel
+`col = (x - min_x) * pixels_per_metre` and `row = (max_z - z) * pixels_per_metre`.
 
 ## File formats
 
