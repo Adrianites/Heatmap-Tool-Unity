@@ -122,8 +122,3 @@ creates the first time you tick it. A tracker's own *Custom Folder* still overri
 
 All of `HeatmapIO` (load, save, JSON, CSV) works in builds too, as does `HeatmapGrid` + `HeatmapMeshBuilder` +
 `HeatmapView` if you want to show heatmaps in-game.
-
-## Reusing in another project
-
-Copy the `HeatmapTool` folder (or export it with *right-click > Export Package...*). It has its own assembly
-definitions and no dependencies on this project.
